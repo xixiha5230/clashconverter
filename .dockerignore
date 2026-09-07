@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+Dockerfile
+docker-compose.yml
+*.log
+test
+tests
+docs
+doc
+.env*
+!.env.example
+wrangler.toml
+cloudflare-env.d.ts
+.vitest*
+coverage

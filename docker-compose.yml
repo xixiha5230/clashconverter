@@ -1,0 +1,10 @@
+name: 'clashconverter'
+
+services:
+  web:
+    build: .
+    image: clashconverter:latest
+    container_name: clashconverter
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
