@@ -217,7 +217,7 @@ function buildRulesYaml(template: ParsedAclTemplate): string {
     if (payload.startsWith('[]')) {
       const directive = payload.slice(2);
       if (directive === 'FINAL' || directive === 'MATCH') {
-        rules.push(`  - ${directive},${ruleSet.group}`);
+        rules.push(`  - MATCH,${ruleSet.group}`);
       } else if (directive.startsWith('GEOIP,')) {
         rules.push(`  - ${directive},${ruleSet.group},no-resolve`);
       } else {
