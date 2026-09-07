@@ -42,8 +42,14 @@ export async function POST(request: NextRequest) {
     }
 
     const record = createSubscription(input, settings);
-    const baseUrl = new URL(request.url).origin;
-    const url = `${baseUrl}/s/${record.id}?token=${encodeURIComponent(record.accessToken)}`;
+
+    const proto =
+      request.headers.get('x-forwarded-proto') ?? request.nextUrl.protocol;
+    const host =
+      request.headers.get('x-forwarded-host') ??
+      request.headers.get('host') ??
+      request.nextUrl.host;
+    const url = `${proto}://${host}/s/${record.id}?token=${encodeURIComponent(record.accessToken)}`;
 
     return NextResponse.json(
       {
