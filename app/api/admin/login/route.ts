@@ -6,11 +6,19 @@ import {
   isPasswordConfigured,
   verifyAdminPassword,
 } from '@/lib/admin-auth';
+import { clientIp, consumeRateLimit, exceededResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const LOGIN_LIMIT = 5;
+const LOGIN_WINDOW_MS = 10 * 60 * 1000;
+
 export async function POST(request: NextRequest) {
+  if (!consumeRateLimit('admin-login', clientIp(request), LOGIN_LIMIT, LOGIN_WINDOW_MS)) {
+    return exceededResponse();
+  }
+
   let body: unknown;
   try {
     body = await request.json();

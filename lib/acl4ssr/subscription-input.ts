@@ -9,6 +9,7 @@
 
 import { parseMultipleProxies } from '../parsers';
 import { parseYamlToProxies } from '../clash/parser/yaml';
+import { assertPublicUrl } from '../ssrf';
 import type { ProxyNode } from '../types';
 
 const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
@@ -107,7 +108,8 @@ export async function resolveSubscriptionNodes(input: string): Promise<ProxyNode
   }
 
   if (isHttpUrl(trimmed)) {
-    const content = await fetchSubscription(trimmed);
+    const safeUrl = await assertPublicUrl(trimmed);
+    const content = await fetchSubscription(safeUrl.toString());
     const proxies = parseSubscriptionInput(content);
     if (proxies.length === 0) {
       throw new Error('No valid proxy nodes found in subscription');

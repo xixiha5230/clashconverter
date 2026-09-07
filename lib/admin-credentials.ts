@@ -22,6 +22,7 @@ import path from 'node:path';
 const DATA_DIR = path.join(process.cwd(), 'data');
 const PASSWORD_FILE = path.join(DATA_DIR, 'admin-password');
 const SESSION_KEY_FILE = path.join(DATA_DIR, 'session-key');
+const SESSION_VERSION_FILE = path.join(DATA_DIR, 'session-version');
 
 function ensureDir(): void {
   mkdirSync(DATA_DIR, { recursive: true });
@@ -96,4 +97,27 @@ export function getSessionSecret(): string {
   const secret = randomBytes(32).toString('hex');
   writeFileSync(SESSION_KEY_FILE, secret, 'utf-8');
   return secret;
+}
+
+/**
+ * Session generation counter. Bump it to invalidate every previously issued
+ * session (e.g. after a password change or logout).
+ */
+export function getSessionVersion(): number {
+  if (!existsSync(SESSION_VERSION_FILE)) {
+    return 0;
+  }
+  try {
+    const value = Number(readFileSync(SESSION_VERSION_FILE, 'utf-8').trim());
+    return Number.isInteger(value) && value > 0 ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function rotateSessionVersion(): number {
+  const next = getSessionVersion() + 1;
+  ensureDir();
+  writeFileSync(SESSION_VERSION_FILE, String(next), 'utf-8');
+  return next;
 }

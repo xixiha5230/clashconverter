@@ -7,7 +7,11 @@
  */
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { getAdminPassword, getSessionSecret } from './admin-credentials';
+import {
+  getAdminPassword,
+  getSessionSecret,
+  getSessionVersion,
+} from './admin-credentials';
 
 export const SESSION_COOKIE = 'admin_session';
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -24,9 +28,11 @@ function signingSecret(): string {
 
 export function createSessionToken(): string {
   const exp = Date.now() + SESSION_TTL_MS;
-  const payload = Buffer.from(JSON.stringify({ sub: 'admin', exp }), 'utf-8').toString(
-    'base64url'
-  );
+  const version = getSessionVersion();
+  const payload = Buffer.from(
+    JSON.stringify({ sub: 'admin', exp, ver: version }),
+    'utf-8'
+  ).toString('base64url');
   const sig = createHmac('sha256', signingSecret()).update(payload).digest('base64url');
   return `${payload}.${sig}`;
 }
@@ -51,7 +57,10 @@ export function verifySessionToken(token: string): boolean {
   try {
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf-8'));
     return (
-      data.sub === 'admin' && typeof data.exp === 'number' && data.exp > Date.now()
+      data.sub === 'admin' &&
+      typeof data.exp === 'number' &&
+      data.exp > Date.now() &&
+      data.ver === getSessionVersion()
     );
   } catch {
     return false;

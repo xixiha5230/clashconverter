@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   SESSION_COOKIE,
+  SESSION_TTL_SECONDS,
+  createSessionToken,
   isPasswordConfigured,
   setAdminPassword,
   verifyAdminPassword,
   verifySessionToken,
 } from '@/lib/admin-auth';
+import { rotateSessionVersion } from '@/lib/admin-credentials';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -44,5 +47,17 @@ export async function POST(request: NextRequest) {
   }
 
   setAdminPassword(newPassword);
-  return NextResponse.json({ ok: true, passwordSet: true });
+  // Invalidate all previously issued sessions and re-issue the current one.
+  rotateSessionVersion();
+
+  const secure = request.nextUrl.protocol === 'https:';
+  const response = NextResponse.json({ ok: true, passwordSet: true });
+  response.cookies.set(SESSION_COOKIE, createSessionToken(), {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure,
+    path: '/',
+    maxAge: SESSION_TTL_SECONDS,
+  });
+  return response;
 }

@@ -2,11 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSubscriptionRequestSchema } from '@/lib/acl4ssr/schema';
 import { createSubscription } from '@/lib/storage';
 import { resolveSubscriptionNodes } from '@/lib/acl4ssr/subscription-input';
+import { clientIp, consumeRateLimit, exceededResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const CREATE_LIMIT = 10;
+const CREATE_WINDOW_MS = 10 * 60 * 1000;
+
 export async function POST(request: NextRequest) {
+  if (!consumeRateLimit('configs', clientIp(request), CREATE_LIMIT, CREATE_WINDOW_MS)) {
+    return exceededResponse();
+  }
+
   try {
     let body: unknown;
     try {
