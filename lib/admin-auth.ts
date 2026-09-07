@@ -1,40 +1,25 @@
 /**
  * Minimal admin authentication.
- * A single ADMIN_PASSWORD env var gates access. Sessions are short-lived
- * HMAC-signed cookies (no dependency, no external secret store).
+ *
+ * Sessions are short-lived HMAC-signed cookies keyed by a persisted random
+ * secret (so changing the password keeps sessions and re-login flow sane).
+ * Login is bypassed on first run when no password has been configured yet.
  */
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { getAdminPassword, getSessionSecret } from './admin-credentials';
 
 export const SESSION_COOKIE = 'admin_session';
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-function adminPassword(): string | null {
-  const pw = process.env.ADMIN_PASSWORD;
-  return pw && pw.length > 0 ? pw : null;
+export function isPasswordConfigured(): boolean {
+  return getAdminPassword() !== null;
 }
 
-export function isAdminEnabled(): boolean {
-  return adminPassword() !== null;
-}
+export { verifyAdminPassword, setAdminPassword } from './admin-credentials';
 
-export function verifyAdminPassword(password: string): boolean {
-  const expected = adminPassword();
-  if (!expected || !password) {
-    return false;
-  }
-  const a = Buffer.from(password, 'utf-8');
-  const b = Buffer.from(expected, 'utf-8');
-  if (a.length !== b.length) {
-    return false;
-  }
-  return timingSafeEqual(a, b);
-}
-
-function sign(payload: string): string {
-  return createHmac('sha256', adminPassword() ?? '')
-    .update(payload)
-    .digest('base64url');
+function signingSecret(): string {
+  return getSessionSecret();
 }
 
 export function createSessionToken(): string {
@@ -42,7 +27,8 @@ export function createSessionToken(): string {
   const payload = Buffer.from(JSON.stringify({ sub: 'admin', exp }), 'utf-8').toString(
     'base64url'
   );
-  return `${payload}.${sign(payload)}`;
+  const sig = createHmac('sha256', signingSecret()).update(payload).digest('base64url');
+  return `${payload}.${sig}`;
 }
 
 export function verifySessionToken(token: string): boolean {
@@ -54,7 +40,9 @@ export function verifySessionToken(token: string): boolean {
     return false;
   }
   const [payload, sig] = parts;
-  const expected = sign(payload);
+  const expected = createHmac('sha256', signingSecret())
+    .update(payload)
+    .digest('base64url');
   const a = Buffer.from(sig, 'utf-8');
   const b = Buffer.from(expected, 'utf-8');
   if (a.length !== b.length || !timingSafeEqual(a, b)) {

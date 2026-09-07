@@ -14,6 +14,11 @@ interface AdminItem {
   url: string;
 }
 
+interface AdminListResponse {
+  items: AdminItem[];
+  passwordSet: boolean;
+}
+
 function maskUrl(url: string): string {
   return url.replace(/token=[^&]+/, 'token=••••••••');
 }
@@ -30,10 +35,16 @@ function templateLabel(key: string): string {
 export function AdminPanel() {
   const [authed, setAuthed] = useState(false);
   const [checksDone, setChecksDone] = useState(false);
-  const [password, setPassword] = useState('');
+  const [passwordSet, setPasswordSet] = useState(false);
   const [items, setItems] = useState<AdminItem[]>([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const [loginPassword, setLoginPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showingChangeForm, setShowingChangeForm] = useState(false);
 
   const refresh = useCallback(async () => {
     const res = await fetch('/api/admin/configs');
@@ -43,8 +54,9 @@ export function AdminPanel() {
       return;
     }
     if (res.ok) {
-      const data = (await res.json()) as { items: AdminItem[] };
+      const data = (await res.json()) as AdminListResponse;
       setAuthed(true);
+      setPasswordSet(data.passwordSet);
       setItems(data.items);
     } else {
       setError('加载订阅列表失败');
@@ -62,12 +74,13 @@ export function AdminPanel() {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password: loginPassword }),
       });
       if (!res.ok) {
         setError('密码错误');
         return;
       }
+      setLoginPassword('');
       await refresh();
     } catch {
       setError('登录请求失败');
@@ -81,6 +94,40 @@ export function AdminPanel() {
     setAuthed(false);
     setItems([]);
     setChecksDone(true);
+  }
+
+  async function submitNewPassword() {
+    setError('');
+    if (newPassword.length < 8) {
+      setError('新密码至少 8 位');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('两次输入的新密码不一致');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch('/api/admin/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? '修改密码失败');
+        return;
+      }
+      setPasswordSet(true);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowingChangeForm(false);
+    } catch {
+      setError('修改密码请求失败');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleDelete(item: AdminItem) {
@@ -119,9 +166,16 @@ export function AdminPanel() {
             </p>
           </div>
           {authed && (
-            <Button variant="outline" onClick={handleLogout}>
-              退出登录
-            </Button>
+            <div className="flex items-center gap-2">
+              {passwordSet && !showingChangeForm && (
+                <Button variant="outline" size="sm" onClick={() => setShowingChangeForm(true)}>
+                  修改密码
+                </Button>
+              )}
+              <Button variant="outline" onClick={handleLogout}>
+                退出登录
+              </Button>
+            </div>
           )}
         </header>
 
@@ -129,23 +183,101 @@ export function AdminPanel() {
 
         {checksDone && !authed && (
           <div className="max-w-sm space-y-3 rounded-neoMd border border-neo-border dark:border-neo-borderDark bg-neo-card dark:bg-neo-cardDark p-6">
-            <label className="block text-sm font-medium">管理员密码</label>
+            <label className="block text-sm font-medium">
+              {passwordSet ? '管理员密码' : '管理员登录'}
+            </label>
             <input
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
               autoFocus
+              placeholder={passwordSet ? '输入密码' : '首次登录无需密码'}
               className="w-full h-10 rounded-neoMd border border-neo-border dark:border-neo-borderDark bg-neo-canvas dark:bg-neo-canvasDark px-3 text-sm focus:outline-none focus:ring-2 focus:ring-neo-borderStrong dark:focus:ring-neo-borderStrongDark"
             />
-            <Button onClick={handleLogin} disabled={busy || !password}>
-              登录
+            <Button onClick={handleLogin} disabled={busy || (!passwordSet && false)}>
+              {passwordSet ? '登录' : '首次登录'}
             </Button>
             {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           </div>
         )}
 
-        {authed && (
+        {authed && !passwordSet && (
+          <div className="max-w-sm space-y-3 rounded-neoMd border border-neo-border dark:border-neo-borderDark bg-neo-card dark:bg-neo-cardDark p-6">
+            <div>
+              <h2 className="font-semibold">设置管理员密码</h2>
+              <p className="mt-1 text-sm text-neo-muted dark:text-neo-mutedDark">
+                首次登录，请设置至少 8 位的管理员密码
+              </p>
+            </div>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="新密码（至少 8 位）"
+              className="w-full h-10 rounded-neoMd border border-neo-border dark:border-neo-borderDark bg-neo-canvas dark:bg-neo-canvasDark px-3 text-sm focus:outline-none focus:ring-2 focus:ring-neo-borderStrong dark:focus:ring-neo-borderStrongDark"
+            />
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="确认新密码"
+              onKeyDown={(e) => e.key === 'Enter' && submitNewPassword()}
+              className="w-full h-10 rounded-neoMd border border-neo-border dark:border-neo-borderDark bg-neo-canvas dark:bg-neo-canvasDark px-3 text-sm focus:outline-none focus:ring-2 focus:ring-neo-borderStrong dark:focus:ring-neo-borderStrongDark"
+            />
+            <Button onClick={submitNewPassword} disabled={busy || !newPassword || !confirmPassword}>
+              保存密码
+            </Button>
+            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          </div>
+        )}
+
+        {authed && passwordSet && showingChangeForm && (
+          <div className="max-w-sm space-y-3 rounded-neoMd border border-neo-border dark:border-neo-borderDark bg-neo-card dark:bg-neo-cardDark p-6">
+            <h2 className="font-semibold">修改密码</h2>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="当前密码"
+              className="w-full h-10 rounded-neoMd border border-neo-border dark:border-neo-borderDark bg-neo-canvas dark:bg-neo-canvasDark px-3 text-sm focus:outline-none focus:ring-2 focus:ring-neo-borderStrong dark:focus:ring-neo-borderStrongDark"
+            />
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="新密码（至少 8 位）"
+              className="w-full h-10 rounded-neoMd border border-neo-border dark:border-neo-borderDark bg-neo-canvas dark:bg-neo-canvasDark px-3 text-sm focus:outline-none focus:ring-2 focus:ring-neo-borderStrong dark:focus:ring-neo-borderStrongDark"
+            />
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="确认新密码"
+              onKeyDown={(e) => e.key === 'Enter' && submitNewPassword()}
+              className="w-full h-10 rounded-neoMd border border-neo-border dark:border-neo-borderDark bg-neo-canvas dark:bg-neo-canvasDark px-3 text-sm focus:outline-none focus:ring-2 focus:ring-neo-borderStrong dark:focus:ring-neo-borderStrongDark"
+            />
+            <div className="flex gap-2">
+              <Button onClick={submitNewPassword} disabled={busy || !newPassword || !confirmPassword}>
+                保存
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowingChangeForm(false);
+                  setCurrentPassword('');
+                  setNewPassword('');
+                  setConfirmPassword('');
+                }}
+              >
+                取消
+              </Button>
+            </div>
+            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          </div>
+        )}
+
+        {authed && passwordSet && (
           <div className="space-y-3">
             {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
             {items.length === 0 ? (

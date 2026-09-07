@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SESSION_COOKIE, verifySessionToken } from '@/lib/admin-auth';
+import { SESSION_COOKIE, isPasswordConfigured, verifySessionToken } from '@/lib/admin-auth';
 import { listSubscriptions } from '@/lib/storage';
 
 export const runtime = 'nodejs';
@@ -29,5 +29,5 @@ export function GET(request: NextRequest) {
     url: `${origin}/s/${record.id}?token=${encodeURIComponent(record.accessToken)}`,
   }));
 
-  return NextResponse.json({ items });
+  return NextResponse.json({ items, passwordSet: isPasswordConfigured() });
 }
