@@ -70,45 +70,118 @@ function buildProxiesYaml(proxies: ProxyNode[]): string {
   return lines.join('\n');
 }
 
-function collectProxiesForGroup(group: TemplateProxyGroup, nodeNames: string[]): string[] {
-  const result: string[] = [];
-  const seen = new Set<string>();
+const BUILTIN_PROXY_NAMES = new Set(['DIRECT', 'REJECT', 'REJECT-DROP', 'PASS', 'GLOBAL']);
 
-  const push = (name: string) => {
-    if (!seen.has(name)) {
-      seen.add(name);
-      result.push(name);
-    }
-  };
+interface GroupPlan {
+  group: TemplateProxyGroup;
+  nodeMatches: string[];
+  refs: string[];
+  kept: boolean;
+  members: string[];
+}
 
-  for (const filter of group.filters) {
-    if (filter.kind === 'reference') {
-      push(filter.value);
-    } else if (filter.kind === 'all') {
-      for (const name of nodeNames) {
-        push(name);
-      }
-    } else {
-      try {
-        const regex = new RegExp(filter.value);
-        for (const name of nodeNames) {
-          if (regex.test(name)) {
-            push(name);
+function planProxyGroups(
+  template: ParsedAclTemplate,
+  nodeNames: string[]
+): GroupPlan[] {
+  const plans: GroupPlan[] = template.proxyGroups.map((group) => {
+    const nodeMatches: string[] = [];
+    const refs: string[] = [];
+
+    for (const filter of group.filters) {
+      if (filter.kind === 'reference') {
+        refs.push(filter.value);
+      } else if (filter.kind === 'all') {
+        nodeMatches.push(...nodeNames);
+      } else {
+        try {
+          const regex = new RegExp(filter.value);
+          for (const name of nodeNames) {
+            if (regex.test(name)) {
+              nodeMatches.push(name);
+            }
           }
+        } catch {
+          // Invalid regex from template - skip this filter
         }
-      } catch {
-        // Invalid regex from template - skip this filter
+      }
+    }
+
+    return { group, nodeMatches, refs, kept: false, members: [] };
+  });
+
+  const byName = new Map(plans.map((plan) => [plan.group.name, plan]));
+
+  // A group stays if it matches at least one node or references at least one
+  // kept group / built-in proxy. Compute to fixpoint so reference chains held
+  // together by another matching group survive.
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const plan of plans) {
+      if (plan.kept) continue;
+      const hasNode = plan.nodeMatches.length > 0;
+      const hasValidRef = plan.refs.some(
+        (ref) => BUILTIN_PROXY_NAMES.has(ref) || byName.get(ref)?.kept
+      );
+      if (hasNode || hasValidRef) {
+        plan.kept = true;
+        changed = true;
       }
     }
   }
 
-  return result;
+  const resolveMember = (ref: string): string | null =>
+    BUILTIN_PROXY_NAMES.has(ref)
+      ? ref
+      : byName.get(ref)?.kept
+        ? ref
+        : null;
+
+  for (const plan of plans) {
+    if (!plan.kept) continue;
+    const seen = new Set<string>();
+    const members: string[] = [];
+    const push = (name: string) => {
+      if (!seen.has(name)) {
+        seen.add(name);
+        members.push(name);
+      }
+    };
+    for (const ref of plan.refs) {
+      const member = resolveMember(ref);
+      if (member) push(member);
+    }
+    for (const name of plan.nodeMatches) {
+      push(name);
+    }
+    plan.members = members;
+  }
+
+  return plans;
 }
 
-function buildProxyGroupsYaml(template: ParsedAclTemplate, nodeNames: string[]): string {
-  const groups: Record<string, unknown>[] = [];
+function buildProxyGroupsYaml(
+  template: ParsedAclTemplate,
+  nodeNames: string[],
+  ruleTargetGroups: Set<string>
+): string {
+  const plans = planProxyGroups(template, nodeNames);
 
-  for (const group of template.proxyGroups) {
+  const groups: Record<string, unknown>[] = [];
+  for (const plan of plans) {
+    if (!plan.kept) continue;
+
+    // Groups referenced by rules must exist; fall back to all nodes so the
+    // resulting config remains loadable by Clash/Mihomo.
+    if (plan.members.length === 0 && ruleTargetGroups.has(plan.group.name)) {
+      plan.members.push(...nodeNames);
+    }
+    if (plan.members.length === 0) {
+      continue;
+    }
+
+    const group = plan.group;
     const obj: Record<string, unknown> = {
       name: group.name,
       type: group.type,
@@ -117,7 +190,7 @@ function buildProxyGroupsYaml(template: ParsedAclTemplate, nodeNames: string[]):
     if (group.interval) obj.interval = group.interval;
     if (group.tolerance) obj.tolerance = group.tolerance;
 
-    obj.proxies = collectProxiesForGroup(group, nodeNames);
+    obj.proxies = plan.members;
     groups.push(obj);
   }
 
@@ -201,12 +274,13 @@ export function renderSubscriptionYaml(
 
   const template = parseAclIni(iniContent);
   const uniqueNames = Array.from(new Set(proxies.map((p) => p.name)));
+  const ruleTargetGroups = new Set(template.ruleSets.map((ruleSet) => ruleSet.group));
 
   const parts: string[] = [];
   parts.push(buildHeader(proxies.length).join('\n'));
   parts.push(BASIC_CONFIG.join('\n'));
   parts.push(buildProxiesYaml(proxies));
-  parts.push(buildProxyGroupsYaml(template, uniqueNames));
+  parts.push(buildProxyGroupsYaml(template, uniqueNames, ruleTargetGroups));
 
   const providerBlock = buildRuleProvidersYaml(buildRuleProviders(template));
   if (providerBlock) {
