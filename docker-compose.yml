@@ -6,6 +6,8 @@ services:
     image: clashconverter:latest
     container_name: clashconverter
     restart: unless-stopped
+    environment:
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
     ports:
       - "127.0.0.1:3000:3000"
     volumes:

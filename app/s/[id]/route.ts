@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSubscription, verifyAccessToken } from '@/lib/storage';
+import { getSubscription, updateAccessStats, verifyAccessToken } from '@/lib/storage';
 import { renderConfigFromInput } from '@/lib/acl4ssr/render-config';
 
 export const runtime = 'nodejs';
@@ -24,7 +24,13 @@ export async function GET(
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const output = await renderConfigFromInput(record.input, record.settings);
+    const { output, nodeCount } = await renderConfigFromInput(record.input, record.settings);
+
+    try {
+      updateAccessStats(record.id, nodeCount);
+    } catch {
+      // Access stats are best-effort; never fail a subscription fetch.
+    }
 
     return new NextResponse(output, {
       status: 200,

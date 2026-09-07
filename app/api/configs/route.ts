@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
 
     const { input, settings } = parsed.data;
 
+    let nodeCount = 0;
     // Validate that the input resolves to at least one node before storing.
     try {
       const proxies = await resolveSubscriptionNodes(input);
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+      nodeCount = proxies.length;
     } catch (error) {
       return NextResponse.json(
         { error: error instanceof Error ? error.message : 'Failed to parse input' },
@@ -41,7 +43,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const record = createSubscription(input, settings);
+    const record = createSubscription(input, settings, nodeCount);
 
     const proto =
       request.headers.get('x-forwarded-proto') ?? request.nextUrl.protocol;

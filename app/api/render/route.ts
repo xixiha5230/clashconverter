@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { input, settings } = parsed.data;
-    const output = await renderConfigFromInput(input, settings);
+    const { output } = await renderConfigFromInput(input, settings);
 
     return NextResponse.json({ output });
   } catch (error) {

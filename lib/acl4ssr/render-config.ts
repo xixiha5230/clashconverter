@@ -11,10 +11,13 @@ import type { SubscriptionSettings } from './types';
 export async function renderConfigFromInput(
   input: string,
   settings: SubscriptionSettings
-): Promise<string> {
+): Promise<{ output: string; nodeCount: number }> {
   const proxies = await resolveSubscriptionNodes(input);
   const iniContent = loadAclTemplate(settings.templateKey);
-  return renderSubscriptionYaml(proxies, iniContent, {
-    enableDns: settings.enableDns,
-  });
+  return {
+    output: renderSubscriptionYaml(proxies, iniContent, {
+      enableDns: settings.enableDns,
+    }),
+    nodeCount: proxies.length,
+  };
 }
