@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { SubscriptionDialog } from '@/components/dialogs/subscription-dialog';
+import { SubscriptionPanel } from './subscription-panel';
 import { useTranslations } from 'next-intl';
 import { ConverterHeader } from './converter-header';
 import { InputSection } from './converter-input-section';
@@ -154,6 +155,9 @@ export function Converter() {
         subscriptionUrl={pendingSubscriptionUrl}
         onConvert={handleSubscriptionConvert}
       />
+
+      {/* Hosted subscription link generator */}
+      <SubscriptionPanel />
     </div>
   );
 }

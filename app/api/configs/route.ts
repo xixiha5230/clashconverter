@@ -1,0 +1,61 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createSubscriptionRequestSchema } from '@/lib/acl4ssr/schema';
+import { createSubscription } from '@/lib/storage';
+import { resolveSubscriptionNodes } from '@/lib/acl4ssr/subscription-input';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+export async function POST(request: NextRequest) {
+  try {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = createSubscriptionRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid request', details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const { input, settings } = parsed.data;
+
+    // Validate that the input resolves to at least one node before storing.
+    try {
+      const proxies = await resolveSubscriptionNodes(input);
+      if (proxies.length === 0) {
+        return NextResponse.json(
+          { error: 'No valid proxy nodes found in input' },
+          { status: 400 }
+        );
+      }
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : 'Failed to parse input' },
+        { status: 400 }
+      );
+    }
+
+    const record = createSubscription(input, settings);
+    const baseUrl = new URL(request.url).origin;
+    const url = `${baseUrl}/s/${record.id}?token=${encodeURIComponent(record.accessToken)}`;
+
+    return NextResponse.json(
+      {
+        id: record.id,
+        accessToken: record.accessToken,
+        url,
+        createdAt: record.createdAt,
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to create config';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

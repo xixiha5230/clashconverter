@@ -399,5 +399,27 @@
       "text": "准备好将您的代理链接转换为 Clash 格式了吗？",
       "button": "立即开始转换"
     }
+  },
+  "subscriptionPanel": {
+    "title": "生成订阅链接",
+    "subtitle": "基于 ACL4SSR 模板生成托管 Clash 配置，并得到可用于代理客户端的短订阅 URL。",
+    "inputPlaceholder": "粘贴代理链接（每行一个）、Clash YAML 配置或订阅链接",
+    "templateLabel": "模板",
+    "enableDnsLabel": "DNS 段",
+    "enableDnsHint": "在输出中生成 dns: (fake-ip) 配置段",
+    "preview": "预览",
+    "previewing": "生成中...",
+    "create": "生成订阅链接",
+    "creating": "创建中...",
+    "previewTitle": "预览",
+    "resultTitle": "订阅链接",
+    "urlLabel": "配置 URL",
+    "tokenLabel": "访问令牌（仅显示一次）",
+    "copy": "复制",
+    "copied": "已复制到剪贴板",
+    "delete": "删除",
+    "deleteConfirm": "确定删除该订阅吗？",
+    "deleted": "订阅已删除",
+    "changeInputToPreview": "预览反映上方输入内容。"
   }
 }

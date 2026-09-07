@@ -77,6 +77,7 @@ export async function middleware(request: NextRequest) {
 }
 
 // Matcher configuration for Edge Middleware
+// /s/<id> serves generated subscription configs and must bypass locale handling
 export const config = {
-  matcher: ['/', '/((?!api|_next|_vercel|.*\\..*).*)']
+  matcher: ['/', '/((?!api|_next|_vercel|s/.*|.*\\..*).*)']
 };

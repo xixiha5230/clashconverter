@@ -399,5 +399,27 @@
       "text": "Ready to convert your proxy links to Clash format?",
       "button": "Start Converting Now"
     }
+  },
+  "subscriptionPanel": {
+    "title": "Generate Subscription Link",
+    "subtitle": "Generate a hosted ACL4SSR-based Clash config and get a short subscription URL for your proxy client.",
+    "inputPlaceholder": "Paste proxy links (one per line), a Clash YAML config, or a subscription URL",
+    "templateLabel": "Template",
+    "enableDnsLabel": "DNS section",
+    "enableDnsHint": "Include a dns: section (fake-ip) in the output",
+    "preview": "Preview",
+    "previewing": "Rendering...",
+    "create": "Create Subscription URL",
+    "creating": "Creating...",
+    "previewTitle": "Preview",
+    "resultTitle": "Subscription URL",
+    "urlLabel": "Config URL",
+    "tokenLabel": "Access token (shown once)",
+    "copy": "Copy",
+    "copied": "Copied to clipboard",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this subscription?",
+    "deleted": "Subscription deleted",
+    "changeInputToPreview": "Preview reflects the input above."
   }
 }
