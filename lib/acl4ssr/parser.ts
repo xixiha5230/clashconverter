@@ -91,12 +91,13 @@ function parseProxyGroup(line: string): TemplateProxyGroup | undefined {
   let tolerance: number | undefined;
 
   if (urlIndex !== -1 && tokens[urlIndex + 1]) {
-    const health = tokens[urlIndex + 1].split(',').map((v) => v.trim());
+    // Health-check fields format: <interval>,,<tolerance>
+    const health = tokens[urlIndex + 1].split(',');
     if (health[0]) {
       interval = Number(health[0]);
     }
-    if (health[1]) {
-      tolerance = Number(health[1]);
+    if (health[2]) {
+      tolerance = Number(health[2]);
     }
   }
 

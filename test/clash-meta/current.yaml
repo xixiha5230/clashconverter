@@ -108,7 +108,7 @@ proxy-groups:
 
 
 dns:
-  enabled: true
+  enable: true
   listen: 0.0.0.0:1053
   ipv6: true
   enhanced-mode: fake-ip

@@ -25,6 +25,10 @@ export class TrojanAdapter implements IProtocolAdapter {
 
     if (trojanNode['skip-cert-verify']) obj['skip-cert-verify'] = trojanNode['skip-cert-verify'];
     if (trojanNode.sni) obj.sni = trojanNode.sni;
+    if (trojanNode.network && trojanNode.network !== 'tcp') obj.network = trojanNode.network;
+    if (trojanNode.alpn) obj.alpn = trojanNode.alpn;
+    if (trojanNode['ws-opts']) obj['ws-opts'] = trojanNode['ws-opts'];
+    if (trojanNode['grpc-opts']) obj['grpc-opts'] = trojanNode['grpc-opts'];
 
     return obj;
   }

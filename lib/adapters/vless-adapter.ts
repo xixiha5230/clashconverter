@@ -30,6 +30,9 @@ export class VLESSAdapter implements IProtocolAdapter {
     if (vlessNode['reality-opts']) obj['reality-opts'] = vlessNode['reality-opts'];
     if (vlessNode['client-fingerprint']) obj['client-fingerprint'] = vlessNode['client-fingerprint'];
     if (vlessNode['ws-opts']) obj['ws-opts'] = vlessNode['ws-opts'];
+    if (vlessNode['h2-opts']) obj['h2-opts'] = vlessNode['h2-opts'];
+    if (vlessNode['grpc-opts']) obj['grpc-opts'] = vlessNode['grpc-opts'];
+    if (vlessNode['http-opts']) obj['http-opts'] = vlessNode['http-opts'];
 
     return obj;
   }
@@ -63,14 +66,16 @@ export class VLESSAdapter implements IProtocolAdapter {
       };
     }
 
-    obj.tls.utls = {
-      enabled: true,
-      fingerprint: 'chrome'
-    };
-
     if (vlessNode['skip-cert-verify']) {
       if (!obj.tls) obj.tls = { enabled: true };
       obj.tls.insecure = vlessNode['skip-cert-verify'];
+    }
+
+    if (obj.tls) {
+      obj.tls.utls = {
+        enabled: true,
+        fingerprint: 'chrome'
+      };
     }
 
     return obj;

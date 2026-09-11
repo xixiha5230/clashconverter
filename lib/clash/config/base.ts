@@ -1,7 +1,7 @@
 // DNS configuration
 export const DNS_CONFIG = [
   'dns:',
-  '  enabled: true',
+  '  enable: true',
   '  ipv6: true',
   '  default-nameserver:',
   '    - 223.5.5.5',

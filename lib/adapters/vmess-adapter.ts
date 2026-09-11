@@ -29,6 +29,13 @@ export class VMessAdapter implements IProtocolAdapter {
     if (vmessNode.tls !== undefined) obj.tls = vmessNode.tls;
     if (vmessNode['skip-cert-verify'] !== undefined) obj['skip-cert-verify'] = vmessNode['skip-cert-verify'];
     if (vmessNode.servername) obj.servername = vmessNode.servername;
+    if (vmessNode.alpn) obj.alpn = vmessNode.alpn;
+    if (vmessNode.client_fingerprint) obj['client-fingerprint'] = vmessNode.client_fingerprint;
+
+    if (vmessNode['ws-opts']) obj['ws-opts'] = vmessNode['ws-opts'];
+    if (vmessNode['h2-opts']) obj['h2-opts'] = vmessNode['h2-opts'];
+    if (vmessNode['grpc-opts']) obj['grpc-opts'] = vmessNode['grpc-opts'];
+    if (vmessNode['http-opts']) obj['http-opts'] = vmessNode['http-opts'];
 
     return obj;
   }

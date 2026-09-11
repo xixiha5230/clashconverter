@@ -50,6 +50,30 @@ interface WebSocketOptions {
 }
 
 /**
+ * HTTP/2 transport options
+ */
+interface H2Options {
+  host?: string[];
+  path?: string;
+}
+
+/**
+ * gRPC transport options
+ */
+interface GrpcOptions {
+  'grpc-service-name'?: string;
+}
+
+/**
+ * HTTP transport options (obfs)
+ */
+interface HttpOptions {
+  method?: string;
+  path?: string[];
+  headers?: Record<string, string>;
+}
+
+/**
  * Reality options (for VLESS)
  */
 interface RealityOptions {
@@ -94,6 +118,12 @@ export interface VMessProxyNode extends BaseProxyNode, TLSOptions {
   alterId?: number;
   cipher?: string;
   network?: 'tcp' | 'ws' | 'grpc' | 'h2' | 'quic';
+  'ws-opts'?: WebSocketOptions;
+  'h2-opts'?: H2Options;
+  'grpc-opts'?: GrpcOptions;
+  'http-opts'?: HttpOptions;
+  alpn?: string[] | string;
+  client_fingerprint?: string;
 }
 
 /**
@@ -107,6 +137,9 @@ export interface VLESSProxyNode extends BaseProxyNode, TLSOptions {
   'reality-opts'?: RealityOptions;
   'client-fingerprint'?: string;
   'ws-opts'?: WebSocketOptions;
+  'h2-opts'?: H2Options;
+  'grpc-opts'?: GrpcOptions;
+  'http-opts'?: HttpOptions;
 }
 
 /**
@@ -117,6 +150,9 @@ export interface TrojanProxyNode extends BaseProxyNode, TLSOptions {
   password: string;
   udp?: boolean;
   network?: 'tcp' | 'ws' | 'grpc';
+  'ws-opts'?: WebSocketOptions;
+  'grpc-opts'?: GrpcOptions;
+  alpn?: string[] | string;
 }
 
 /**

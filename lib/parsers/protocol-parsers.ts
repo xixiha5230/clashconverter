@@ -169,23 +169,57 @@ export function parseVmess(link: string): ParsedProxy | null {
 
     const nodeName = name || config.ps || 'Vmess';
 
+    const vmessConfig: Record<string, unknown> = {
+      name: nodeName,
+      type: 'vmess',
+      server: config.add,
+      port: parseInt(config.port, 10),
+      uuid: config.id,
+      alterId: parseInt(config.aid || '0', 10),
+      cipher: config.scy || 'auto',
+      network: config.net || 'tcp',
+      tls: config.tls === 'tls' || config.tls === 'true',
+      udp: true,
+      // Default skip-cert-verify to false unless explicitly set
+      'skip-cert-verify': config.allowInsecure === 'true' || config.allowInsecure === '1' || config.allowInsecure === 1,
+      servername: config.sni || config.host || '',
+    };
+
+    // WebSocket transport options
+    if ((config.net === 'ws' || config.net === 'websocket') && config.path) {
+      vmessConfig['ws-opts'] = {
+        path: config.path || '/',
+        headers: config.host ? { Host: config.host } : undefined,
+      };
+    }
+
+    // HTTP/2 transport options
+    if (config.net === 'h2') {
+      vmessConfig['h2-opts'] = {
+        path: config.path || '/',
+        host: config.host ? [config.host] : undefined,
+      };
+    }
+
+    // gRPC transport options
+    if (config.net === 'grpc') {
+      vmessConfig['grpc-opts'] = {
+        'grpc-service-name': config.path ? config.path.replace(/^\//, '') : config.serviceName || '',
+      };
+    }
+
+    // HTTP obfs transport options (legacy vmess `type` field)
+    if (config.type === 'http' && config.path) {
+      vmessConfig['http-opts'] = {
+        method: 'GET',
+        path: [config.path],
+        headers: config.host ? { Host: [config.host] } : undefined,
+      };
+    }
+
     return {
       name: nodeName,
-      config: {
-        name: nodeName,
-        type: 'vmess',
-        server: config.add,
-        port: parseInt(config.port, 10),
-        uuid: config.id,
-        alterId: parseInt(config.aid || '0', 10),
-        cipher: config.scy || 'auto',
-        network: config.net || 'tcp',
-        tls: config.tls === 'tls' || config.tls === 'true',
-        udp: true,
-        // Default skip-cert-verify to false unless explicitly set
-        'skip-cert-verify': config.allowInsecure === 'true' || config.allowInsecure === '1' || config.allowInsecure === 1,
-        servername: config.sni || config.host || '',
-      } as ProxyNode,
+      config: vmessConfig as unknown as ProxyNode,
     };
   } catch {
     return null;
@@ -201,21 +235,43 @@ export function parseTrojan(link: string): ParsedProxy | null {
     const params = parseUrlParams(url.search.slice(1));
     const name = url.hash ? decodeURIComponent(url.hash.slice(1)) : 'Trojan';
 
+    const trojanConfig: Record<string, unknown> = {
+      name,
+      type: 'trojan',
+      server: url.hostname,
+      port: parseInt(url.port, 10),
+      password: decodeURIComponent(url.username),
+      udp: true,
+      // Trojan defaults to skip-cert-verify=true (insecure) for compatibility
+      // Set to false only if allowInsecure is explicitly 'false' or '0'
+      'skip-cert-verify': params.allowInsecure !== 'false' && params.allowInsecure !== '0',
+      sni: params.sni || params.peer || '',
+      network: params.type || 'tcp',
+    };
+
+    // WebSocket transport options
+    if (params.type === 'ws' || params.type === 'websocket') {
+      trojanConfig['ws-opts'] = {
+        path: params.path || '/',
+        headers: params.host ? { Host: params.host } : undefined,
+      };
+    }
+
+    // gRPC transport options
+    if (params.type === 'grpc') {
+      trojanConfig['grpc-opts'] = {
+        'grpc-service-name': params.serviceName || params.service || params.path?.replace(/^\//, '') || '',
+      };
+    }
+
+    // ALPN
+    if (params.alpn) {
+      trojanConfig.alpn = params.alpn.split(',').map((v) => v.trim()).filter(Boolean);
+    }
+
     return {
       name,
-      config: {
-        name,
-        type: 'trojan',
-        server: url.hostname,
-        port: parseInt(url.port, 10),
-        password: decodeURIComponent(url.username),
-        udp: true,
-        // Trojan defaults to skip-cert-verify=true (insecure) for compatibility
-        // Set to false only if allowInsecure is explicitly 'false' or '0'
-        'skip-cert-verify': params.allowInsecure !== 'false' && params.allowInsecure !== '0',
-        sni: params.sni || params.peer || '',
-        network: params.type || 'tcp',
-      } as ProxyNode,
+      config: trojanConfig as unknown as ProxyNode,
     };
   } catch {
     return null;
